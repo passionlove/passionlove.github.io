@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>写作</title>
+  <title>墨境 - 沉浸式写作</title>
   <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -62,17 +62,7 @@ body {
   background: var(--toolbar-bg);
   backdrop-filter: blur(10px);
   z-index: 100;
-  transform: translateY(-100%);
   transition: transform 0.3s ease;
-}
-#toolbar:hover, #toolbar.visible { transform: translateY(0); }
-
-#app::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 30px;
-  z-index: 99;
 }
 
 .toolbar-group { display: flex; align-items: center; gap: 8px; }
@@ -134,6 +124,68 @@ body {
 }
 #statusbar:hover { opacity: 1; }
 #save-indicator { transition: opacity 0.5s; }
+
+.app-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  opacity: 0.9;
+  color: var(--text);
+}
+
+#welcome {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  max-width: 520px;
+  width: 100%;
+  padding: 40px 20px;
+  color: var(--text);
+  opacity: 0.85;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+#welcome h1 {
+  font-size: 48px;
+  font-weight: 300;
+  letter-spacing: 8px;
+  margin-bottom: 8px;
+}
+.welcome-subtitle {
+  font-size: 16px;
+  opacity: 0.6;
+  margin-bottom: 40px;
+}
+.welcome-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  text-align: left;
+  margin-bottom: 40px;
+}
+.welcome-item {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+.welcome-item strong {
+  opacity: 1;
+}
+.welcome-hint {
+  font-size: 14px;
+  opacity: 0.4;
+  animation: pulse-hint 2s ease-in-out infinite;
+}
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+#welcome.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 
 body.focus-mode #toolbar,
 body.focus-mode #statusbar { display: none !important; }
@@ -200,11 +252,9 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
   #editor { max-width: 100%; font-size: 16px; }
   #toolbar {
     top: auto; bottom: 0;
-    transform: translateY(100%);
     flex-wrap: wrap;
     gap: 8px;
   }
-  #toolbar:hover, #toolbar.visible { transform: translateY(0); }
   #statusbar { bottom: auto; top: 0; }
 }
   </style>
@@ -213,6 +263,7 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
   <div id="app">
     <header id="toolbar">
       <div class="toolbar-group">
+        <span class="app-name">墨境</span>
         <button id="theme-btn" title="切换主题">🎨 深夜</button>
         <button id="style-btn" title="打字机风格">⌨ 复古机械</button>
       </div>
@@ -229,6 +280,17 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
 
     <main id="editor-wrap">
       <div id="editor" contenteditable="true" spellcheck="false"></div>
+      <div id="welcome">
+        <h1>墨境</h1>
+        <p class="welcome-subtitle">沉浸式氛围写作工具</p>
+        <div class="welcome-features">
+          <div class="welcome-item">🎨 <strong>四套视觉主题</strong><br>深夜 / 晚霞 / 晨曦 / 海洋</div>
+          <div class="welcome-item">⌨ <strong>三种打字机风格</strong><br>复古机械 / 现代柔和 / 极简</div>
+          <div class="welcome-item">🎵 <strong>氛围背景音</strong><br>雨夜 / 壁炉 / 森林</div>
+          <div class="welcome-item">📥 <strong>Markdown 导出</strong><br>一键下载 .md 文件</div>
+        </div>
+        <p class="welcome-hint">点击此处，开始写作...</p>
+      </div>
     </main>
 
     <footer id="statusbar">
@@ -277,17 +339,15 @@ document.getElementById('theme-btn').addEventListener('click', () => {
   savePrefs();
 });
 
-// Toolbar hover trigger
-const toolbar = document.getElementById('toolbar');
-const triggerZone = 30;
-document.addEventListener('mousemove', (e) => {
-  if (e.clientY <= triggerZone) {
-    toolbar.classList.add('visible');
+// === Welcome Overlay ===
+const welcome = document.getElementById('welcome');
+function hideWelcome() {
+  if (!welcome.classList.contains('hidden')) {
+    welcome.classList.add('hidden');
   }
-});
-toolbar.addEventListener('mouseleave', () => {
-  toolbar.classList.remove('visible');
-});
+}
+editor.addEventListener('focus', hideWelcome);
+editor.addEventListener('input', hideWelcome);
 
 // === Typewriter Style System ===
 const STYLES = [
@@ -399,6 +459,7 @@ function restoreFromStorage() {
     if (data.text) {
       editor.textContent = data.text;
       updateWordCount();
+      hideWelcome();
     }
     if (data.theme !== undefined) setTheme(data.theme);
     if (data.style !== undefined) setTypeStyle(data.style);
@@ -590,7 +651,9 @@ document.getElementById('new-btn').addEventListener('click', () => {
   if (text && !confirm('当前文档未导出，确定要新建吗？')) return;
   editor.textContent = '';
   updateWordCount();
+  updateTitle();
   saveToStorage();
+  welcome.classList.remove('hidden');
   editor.focus();
 });
 
@@ -606,10 +669,10 @@ document.getElementById('export-btn').addEventListener('click', () => {
       .replace(/[\/\\:*?"<>|]/g, '')
       .substring(0, 50)
       .trim();
-    filename = filename || '写作';
+    filename = filename || '墨境';
   } else {
     const d = new Date();
-    filename = `写作-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    filename = `墨境-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
   filename += '.md';
 
@@ -661,7 +724,7 @@ function showTypeEffect() {
 // === Final Integration ===
 function updateTitle() {
   const text = (editor.innerText || '').split('\n')[0].trim();
-  document.title = text ? text.substring(0, 30) + ' — 写作' : '写作';
+  document.title = text ? text.substring(0, 30) + ' — 墨境' : '墨境 - 沉浸式写作';
 }
 
 document.addEventListener('visibilitychange', () => {
