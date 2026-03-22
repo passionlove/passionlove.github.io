@@ -238,6 +238,35 @@ body {
   pointer-events: none;
 }
 
+/* Editor Lock Overlay */
+#editor-lock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  pointer-events: none;
+}
+
+#editor-lock.active {
+  display: flex;
+}
+
+#editor-lock span {
+  font-size: 16px;
+  color: var(--text);
+  opacity: 0.9;
+  padding: 12px 24px;
+  background: var(--toolbar-bg);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
 /* Playback Control Bar */
 #playback-bar {
   position: fixed;
@@ -424,6 +453,7 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
         </div>
         <p class="welcome-hint">点击此处，开始写作...</p>
       </div>
+      <div id="editor-lock"><span>播放中，暂停后可编辑</span></div>
     </main>
 
     <footer id="statusbar">
