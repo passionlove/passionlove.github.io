@@ -908,6 +908,63 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// === Stub for startPlayback (will be implemented in Task 7) ===
+function startPlayback(text) {
+  console.warn('startPlayback not yet implemented');
+}
+
+// === File Upload Handler ===
+const uploadBtn = document.getElementById('upload-btn');
+const fileInput = document.getElementById('file-input');
+
+uploadBtn.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Validate file size (< 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+  if (file.size > maxSize) {
+    showSaveIndicator('⚠ 文件过大，请上传小于5MB的文件');
+    fileInput.value = ''; // Reset input
+    return;
+  }
+
+  // Read file with FileReader
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    const text = event.target.result;
+
+    // Check for empty file
+    if (!text || text.trim().length === 0) {
+      showSaveIndicator('⚠ 文件为空');
+      fileInput.value = '';
+      return;
+    }
+
+    // Confirm if editor has content
+    const editorContent = (editor.innerText || '').trim();
+    if (editorContent && !confirm('编辑器中有内容，确定要覆盖吗？')) {
+      fileInput.value = '';
+      return;
+    }
+
+    // Call startPlayback with the file content
+    startPlayback(text);
+  };
+
+  reader.onerror = () => {
+    showSaveIndicator('⚠ 读取文件失败');
+    fileInput.value = '';
+  };
+
+  reader.readAsText(file);
+});
+
 // === Initialization ===
 restoreFromStorage();
 updateWordCount();
