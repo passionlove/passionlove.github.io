@@ -275,6 +275,7 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
       </div>
       <div class="toolbar-group">
         <button id="export-btn" title="导出 Markdown" disabled>📥 导出</button>
+        <button id="upload-btn" title="上传文件">📁 上传</button>
         <button id="new-btn" title="新建文档">📄 新建</button>
       </div>
     </header>
@@ -298,6 +299,7 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
       <span id="word-count"></span>
       <span id="save-indicator"></span>
     </footer>
+    <input type="file" id="file-input" accept=".txt,.md,.json,.csv" hidden>
   </div>
 
   <script>
