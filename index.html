@@ -97,6 +97,7 @@ body {
   align-items: flex-start;
   padding: 80px 20px 60px;
   overflow-y: auto;
+  position: relative;
 }
 #editor {
   width: 100%;
@@ -341,13 +342,15 @@ document.getElementById('theme-btn').addEventListener('click', () => {
 
 // === Welcome Overlay ===
 const welcome = document.getElementById('welcome');
+let initialized = false;
 function hideWelcome() {
   if (!welcome.classList.contains('hidden')) {
     welcome.classList.add('hidden');
   }
 }
-editor.addEventListener('focus', hideWelcome);
-editor.addEventListener('input', hideWelcome);
+function onUserFocus() {
+  if (initialized) hideWelcome();
+}
 
 // === Typewriter Style System ===
 const STYLES = [
@@ -395,6 +398,7 @@ editor.addEventListener('paste', (e) => {
 });
 
 function onInput(e) {
+  hideWelcome();
   updateWordCount();
   updateTitle();
   scheduleSave();
@@ -409,6 +413,7 @@ document.addEventListener('keydown', (e) => {
     document.body.classList.toggle('focus-mode');
   }
 });
+editor.addEventListener('focus', onUserFocus);
 
 // === Persistence (overwrites hoisted stubs) ===
 const saveIndicator = document.getElementById('save-indicator');
@@ -736,7 +741,7 @@ document.addEventListener('visibilitychange', () => {
 restoreFromStorage();
 updateWordCount();
 document.getElementById('music-btn').textContent = SCENES[currentMusicScene].label;
-editor.focus();
+initialized = true;
   </script>
 </body>
 </html>
