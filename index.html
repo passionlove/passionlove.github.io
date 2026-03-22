@@ -915,6 +915,67 @@ const playbackSpeedSlider = document.getElementById('playback-speed');
 
 playbackSpeedSlider.addEventListener('input', (e) => {
   playSpeed = parseFloat(e.target.value);
+  document.getElementById('playback-speed-label').textContent = `速度 ${playSpeed.toFixed(1)}x`;
+});
+
+// === Playback Control Button Event Listeners ===
+document.getElementById('playback-start').addEventListener('click', () => {
+  if (playState === 'playing' || playState === 'paused') {
+    // Reset index to 0
+    currentIndex = 0;
+    // Clear editor
+    editor.textContent = '';
+    // Resume if paused
+    if (playState === 'paused') {
+      togglePause();
+    }
+  }
+});
+
+document.getElementById('playback-end').addEventListener('click', () => {
+  if (playState === 'playing' || playState === 'paused') {
+    // Insert remaining content
+    const remaining = fileContent.substring(currentIndex);
+    if (remaining) {
+      document.execCommand('insertText', false, remaining);
+    }
+    // Stop playback
+    stopPlayback(true);
+  }
+});
+
+document.getElementById('playback-rewind').addEventListener('click', () => {
+  if (playState === 'playing' || playState === 'paused') {
+    // Move back 100 characters
+    currentIndex = Math.max(0, currentIndex - 100);
+    // Rebuild content from start to new index
+    editor.textContent = '';
+    const contentToInsert = fileContent.substring(0, currentIndex);
+    if (contentToInsert) {
+      document.execCommand('insertText', false, contentToInsert);
+    }
+    // Update progress
+    updatePlaybackProgress();
+  }
+});
+
+document.getElementById('playback-forward').addEventListener('click', () => {
+  if (playState === 'playing' || playState === 'paused') {
+    // Move forward 100 characters
+    const newIndex = Math.min(fileContent.length, currentIndex + 100);
+    // Insert skipped content
+    const skippedContent = fileContent.substring(currentIndex, newIndex);
+    if (skippedContent) {
+      document.execCommand('insertText', false, skippedContent);
+    }
+    currentIndex = newIndex;
+    // Update progress
+    updatePlaybackProgress();
+  }
+});
+
+document.getElementById('playback-stop').addEventListener('click', () => {
+  stopPlayback();
 });
 
 document.getElementById('playback-pause').addEventListener('click', togglePause);
@@ -959,6 +1020,9 @@ function startPlayback(text) {
   fileContent = text;
   currentIndex = 0;
   playState = 'playing';
+
+  // Initialize speed label
+  document.getElementById('playback-speed-label').textContent = `速度 ${playSpeed.toFixed(1)}x`;
 
   // Hide welcome message
   hideWelcome();
