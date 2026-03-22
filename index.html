@@ -550,6 +550,7 @@ function setTypeStyle(index) {
 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   currentStyleIndex = 2;
 }
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 setTypeStyle(currentStyleIndex);
 
 document.getElementById('style-btn').addEventListener('click', () => {
@@ -946,6 +947,14 @@ function showTypeEffect() {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
 }
 
+const showTypeEffectOriginal = showTypeEffect;
+
+function showTypeEffectPlayback() {
+  if (!prefersReducedMotion || playState !== 'playing') {
+    showTypeEffectOriginal();
+  }
+}
+
 // === Final Integration ===
 function updateTitle() {
   const text = (editor.innerText || '').split('\n')[0].trim();
@@ -1121,7 +1130,7 @@ function playbackLoop() {
     updatePlaybackProgress();
 
     // Show typing effect and sound
-    showTypeEffect();
+    showTypeEffectPlayback();
     playRetroKeystroke(char);
 
     lastPlaybackTime = now;
