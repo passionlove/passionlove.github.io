@@ -15,6 +15,27 @@
   --statusbar-bg: rgba(10, 14, 39, 0.7);
   --editor-bg: transparent;
 }
+[data-theme="sunset"] {
+  --bg: linear-gradient(135deg, #2d1b4e 0%, #4a2040 50%, #7a3b2e 100%);
+  --text: #f5e6b8;
+  --accent: #e8a87c;
+  --toolbar-bg: rgba(45, 27, 78, 0.85);
+  --statusbar-bg: rgba(45, 27, 78, 0.7);
+}
+[data-theme="dawn"] {
+  --bg: linear-gradient(135deg, #faf6f0 0%, #f5ede0 100%);
+  --text: #2c2c2c;
+  --accent: #7a9e7e;
+  --toolbar-bg: rgba(250, 246, 240, 0.9);
+  --statusbar-bg: rgba(250, 246, 240, 0.8);
+}
+[data-theme="ocean"] {
+  --bg: linear-gradient(135deg, #0c2340 0%, #0d4f6b 50%, #1a7a7a 100%);
+  --text: #d4f0f0;
+  --accent: #4ecdc4;
+  --toolbar-bg: rgba(12, 35, 64, 0.85);
+  --statusbar-bg: rgba(12, 35, 64, 0.7);
+}
 
 html, body { height: 100%; overflow: hidden; }
 body {
@@ -112,6 +133,56 @@ body.focus-mode #toolbar,
 body.focus-mode #statusbar { display: none !important; }
 body.focus-mode #editor-wrap { padding: 40px 20px; }
 
+/* Typewriter styles */
+[data-typestyle="retro"] #editor {
+  font-family: "Courier New", "Noto Serif SC", monospace;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  caret-color: transparent;
+}
+
+[data-typestyle="modern"] #editor {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+[data-typestyle="minimal"] #editor {
+  font-family: inherit;
+}
+
+@keyframes stamp-in {
+  0% { transform: scale(1.4) translateY(-2px); opacity: 0.6; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes fade-char {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.retro-cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  background: var(--text);
+  vertical-align: text-bottom;
+  animation: blink-block 1s step-end infinite;
+}
+@keyframes blink-block {
+  50% { opacity: 0; }
+}
+
+/* Modern cursor: breathing gradient blink */
+[data-typestyle="modern"] #editor {
+  caret-color: var(--accent);
+}
+@keyframes breathing-caret {
+  0%, 100% { caret-color: var(--accent); }
+  50% { caret-color: transparent; }
+}
+[data-typestyle="modern"] #editor:focus {
+  animation: breathing-caret 1.5s ease-in-out infinite;
+}
+
 @media (max-width: 768px) {
   #editor-wrap { padding: 60px 16px 80px; }
   #editor { max-width: 100%; font-size: 16px; }
@@ -159,6 +230,102 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
 let currentMusicScene = 3; // silence default
 function savePrefs() {}
 function scheduleSave() {}
+
+// === Theme System ===
+const THEMES = [
+  { id: 'night', label: '深夜', attr: '' },
+  { id: 'sunset', label: '晚霞', attr: 'sunset' },
+  { id: 'dawn', label: '晨曦', attr: 'dawn' },
+  { id: 'ocean', label: '海洋', attr: 'ocean' }
+];
+const THEME_MUSIC_MAP = { night: 'rain', sunset: 'fire', dawn: 'forest', ocean: 'silence' };
+
+let currentThemeIndex = 0;
+
+function setTheme(index) {
+  currentThemeIndex = index;
+  const theme = THEMES[index];
+  if (theme.attr) {
+    document.documentElement.setAttribute('data-theme', theme.attr);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  document.getElementById('theme-btn').textContent = '🎨 ' + theme.label;
+}
+
+document.getElementById('theme-btn').addEventListener('click', () => {
+  setTheme((currentThemeIndex + 1) % THEMES.length);
+  savePrefs();
+});
+
+// Toolbar hover trigger
+const toolbar = document.getElementById('toolbar');
+const triggerZone = 30;
+document.addEventListener('mousemove', (e) => {
+  if (e.clientY <= triggerZone) {
+    toolbar.classList.add('visible');
+  }
+});
+toolbar.addEventListener('mouseleave', () => {
+  toolbar.classList.remove('visible');
+});
+
+// === Typewriter Style System ===
+const STYLES = [
+  { id: 'retro', label: '复古机械' },
+  { id: 'modern', label: '现代柔和' },
+  { id: 'minimal', label: '极简' }
+];
+let currentStyleIndex = 0;
+
+function setTypeStyle(index) {
+  currentStyleIndex = index;
+  const style = STYLES[index];
+  document.documentElement.setAttribute('data-typestyle', style.id);
+  document.getElementById('style-btn').textContent = '⌨ ' + style.label;
+}
+
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  currentStyleIndex = 2;
+}
+setTypeStyle(currentStyleIndex);
+
+document.getElementById('style-btn').addEventListener('click', () => {
+  setTypeStyle((currentStyleIndex + 1) % STYLES.length);
+  savePrefs();
+});
+
+// === Editor Core ===
+const editor = document.getElementById('editor');
+const wordCountEl = document.getElementById('word-count');
+const exportBtn = document.getElementById('export-btn');
+
+function updateWordCount() {
+  const text = editor.innerText || '';
+  const chineseChars = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+  const englishWords = (text.match(/[a-zA-Z]+/g) || []).length;
+  const total = chineseChars + englishWords;
+  wordCountEl.textContent = total + ' 字';
+  exportBtn.disabled = text.trim().length === 0;
+}
+
+editor.addEventListener('paste', (e) => {
+  e.preventDefault();
+  const text = e.clipboardData.getData('text/plain');
+  document.execCommand('insertText', false, text);
+});
+
+function onInput(e) {
+  updateWordCount();
+  scheduleSave();
+}
+editor.addEventListener('input', (e) => onInput(e));
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.body.classList.toggle('focus-mode');
+  }
+});
   </script>
 </body>
 </html>
