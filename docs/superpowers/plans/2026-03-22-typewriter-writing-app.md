@@ -732,7 +732,8 @@ const SCENES = [
   { id: 'forest', label: '🌲 森林' },
   { id: 'silence', label: '🔇 静谧' }
 ];
-let currentMusicScene = 3; // silence default (already declared as stub in Task 1, now used by this module)
+// Note: currentMusicScene was already declared as a stub in Task 1. Do NOT re-declare with let.
+// The SCENES array and functions below use it directly.
 let ambientSource = null;
 
 function generateAmbientBuffer(sceneId) {
