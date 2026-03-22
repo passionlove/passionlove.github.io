@@ -226,7 +226,7 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
   </div>
 
   <script>
-// === Stubs (replaced by later tasks) ===
+// === Stubs (hoisted; real implementations defined after editor core) ===
 let currentMusicScene = 3; // silence default
 function savePrefs() {}
 function scheduleSave() {}
@@ -326,6 +326,242 @@ document.addEventListener('keydown', (e) => {
     document.body.classList.toggle('focus-mode');
   }
 });
+
+// === Persistence (overwrites hoisted stubs) ===
+const saveIndicator = document.getElementById('save-indicator');
+let saveTimeout = null;
+
+scheduleSave = function() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToStorage, 1000);
+};
+
+function saveToStorage() {
+  const data = {
+    text: editor.innerText || '',
+    theme: currentThemeIndex,
+    style: currentStyleIndex,
+    musicScene: currentMusicScene || 3,
+    musicVolume: document.getElementById('music-volume').value,
+    typeVolume: document.getElementById('type-volume').value
+  };
+  try {
+    localStorage.setItem('writer-data', JSON.stringify(data));
+    showSaveIndicator();
+  } catch (e) {
+    try {
+      localStorage.setItem('writer-data', JSON.stringify({ text: data.text }));
+      showSaveIndicator('⚠ 存储空间不足，仅保存文本');
+    } catch (e2) {
+      showSaveIndicator('⚠ 保存失败');
+    }
+  }
+}
+
+function showSaveIndicator(msg) {
+  saveIndicator.textContent = msg || '✓ 已保存';
+  saveIndicator.style.opacity = '1';
+  setTimeout(() => { saveIndicator.style.opacity = '0'; }, 2000);
+}
+
+savePrefs = function() {
+  scheduleSave();
+};
+
+function restoreFromStorage() {
+  try {
+    const raw = localStorage.getItem('writer-data');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.text) {
+      editor.textContent = data.text;
+      updateWordCount();
+    }
+    if (data.theme !== undefined) setTheme(data.theme);
+    if (data.style !== undefined) setTypeStyle(data.style);
+    if (data.musicVolume !== undefined) document.getElementById('music-volume').value = data.musicVolume;
+    if (data.typeVolume !== undefined) document.getElementById('type-volume').value = data.typeVolume;
+    if (data.musicScene !== undefined) {
+      currentMusicScene = data.musicScene;
+      document.getElementById('music-btn').textContent = SCENES[currentMusicScene].label;
+    }
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } catch (e) { /* corrupt data, ignore */ }
+}
+
+// === Audio Engine ===
+let audioCtx = null;
+let typingGain = null;
+let musicGain = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    typingGain = audioCtx.createGain();
+    typingGain.gain.value = document.getElementById('type-volume').value / 100;
+    typingGain.connect(audioCtx.destination);
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = document.getElementById('music-volume').value / 100;
+    musicGain.connect(audioCtx.destination);
+  } catch (e) {
+    audioCtx = null;
+  }
+}
+
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('keydown', initAudio, { once: true });
+
+document.getElementById('type-volume').addEventListener('input', (e) => {
+  if (typingGain) typingGain.gain.value = e.target.value / 100;
+  savePrefs();
+});
+document.getElementById('music-volume').addEventListener('input', (e) => {
+  if (musicGain) musicGain.gain.value = e.target.value / 100;
+  savePrefs();
+});
+
+function playRetroKeystroke(key) {
+  if (!audioCtx || !typingGain || currentStyleIndex === 2) return;
+  const now = audioCtx.currentTime;
+  const pitchVariation = 1 + (Math.random() - 0.5) * 0.1;
+
+  if (currentStyleIndex === 0) {
+    const bufferSize = audioCtx.sampleRate * 0.05;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const isEnter = key === 'Enter';
+    const isBackspace = key === 'Backspace';
+    const amplitude = isEnter ? 0.5 : isBackspace ? 0.2 : 0.35;
+    for (let i = 0; i < bufferSize; i++) {
+      const decay = Math.exp(-i / (bufferSize * (isEnter ? 0.4 : 0.2)));
+      data[i] = (Math.random() * 2 - 1) * amplitude * decay;
+    }
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.playbackRate.value = pitchVariation;
+    source.connect(typingGain);
+    source.start(now);
+  } else if (currentStyleIndex === 1) {
+    const osc = audioCtx.createOscillator();
+    const oscGain = audioCtx.createGain();
+    const isEnter = key === 'Enter';
+    osc.type = 'sine';
+    osc.frequency.value = (isEnter ? 600 : 800) * pitchVariation;
+    oscGain.gain.setValueAtTime(0.15, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    osc.connect(oscGain);
+    oscGain.connect(typingGain);
+    osc.start(now);
+    osc.stop(now + 0.03);
+  }
+}
+
+editor.addEventListener('keydown', (e) => {
+  playRetroKeystroke(e.key);
+});
+
+// === Ambient Music ===
+const SCENES = [
+  { id: 'rain', label: '🌧 雨夜' },
+  { id: 'fire', label: '🔥 壁炉' },
+  { id: 'forest', label: '🌲 森林' },
+  { id: 'silence', label: '🔇 静谧' }
+];
+let ambientSource = null;
+
+function generateAmbientBuffer(sceneId) {
+  if (!audioCtx) return null;
+  const sr = audioCtx.sampleRate;
+  const duration = 6;
+  const length = sr * duration;
+  const buffer = audioCtx.createBuffer(1, length, sr);
+  const data = buffer.getChannelData(0);
+
+  if (sceneId === 'rain') {
+    let last = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + (0.02 * white)) / 1.02;
+      data[i] = last * 3.5;
+      if (Math.random() < 0.0001) {
+        const dropLen = Math.min(sr * 0.05, length - i);
+        for (let j = 0; j < dropLen; j++) {
+          data[i + j] += (Math.random() * 2 - 1) * 0.3 * Math.exp(-j / (sr * 0.01));
+        }
+      }
+    }
+  } else if (sceneId === 'fire') {
+    for (let i = 0; i < length; i++) {
+      let sample = 0;
+      sample += Math.sin(i / sr * Math.PI * 2 * 60) * 0.05;
+      if (Math.random() < 0.003) {
+        const crackleLen = Math.min(Math.floor(sr * 0.02 * Math.random()), length - i);
+        for (let j = 0; j < crackleLen; j++) {
+          data[i + j] = (data[i + j] || 0) + (Math.random() * 2 - 1) * 0.4 * Math.exp(-j / (sr * 0.005));
+        }
+      }
+      data[i] = (data[i] || 0) + sample;
+    }
+  } else if (sceneId === 'forest') {
+    let last = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + (0.01 * white)) / 1.01;
+      const windMod = 0.5 + 0.5 * Math.sin(i / sr * Math.PI * 2 * 0.15);
+      data[i] = last * 2.5 * windMod;
+      if (Math.random() < 0.00005) {
+        const chirpLen = Math.min(Math.floor(sr * 0.1), length - i);
+        for (let j = 0; j < chirpLen; j++) {
+          const freq = 2000 + 1000 * Math.sin(j / sr * Math.PI * 2 * 8);
+          data[i + j] += Math.sin(j / sr * Math.PI * 2 * freq) * 0.1 * Math.exp(-j / (sr * 0.04));
+        }
+      }
+    }
+  }
+  return buffer;
+}
+
+function playAmbient(sceneId) {
+  stopAmbient();
+  if (!audioCtx || sceneId === 'silence') return;
+  const buffer = generateAmbientBuffer(sceneId);
+  if (!buffer) return;
+  ambientSource = audioCtx.createBufferSource();
+  ambientSource.buffer = buffer;
+  ambientSource.loop = true;
+  ambientSource.connect(musicGain);
+  ambientSource.start();
+}
+
+function stopAmbient() {
+  if (ambientSource) {
+    try { ambientSource.stop(); } catch(e) {}
+    ambientSource = null;
+  }
+}
+
+function setMusicScene(index) {
+  currentMusicScene = index;
+  const scene = SCENES[index];
+  document.getElementById('music-btn').textContent = scene.label;
+  if (audioCtx) {
+    playAmbient(scene.id);
+  }
+}
+
+document.getElementById('music-btn').addEventListener('click', () => {
+  initAudio();
+  setMusicScene((currentMusicScene + 1) % SCENES.length);
+  savePrefs();
+});
+
+restoreFromStorage();
   </script>
 </body>
 </html>
