@@ -580,8 +580,43 @@ function onInput(e) {
 editor.addEventListener('input', (e) => onInput(e));
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    document.body.classList.toggle('focus-mode');
+  // Keyboard shortcuts for playback control
+  if (e.code === 'Space' && (playState === 'playing' || playState === 'paused')) {
+    e.preventDefault();
+    togglePause();
+  } else if (e.code === 'ArrowLeft' && (playState === 'playing' || playState === 'paused')) {
+    e.preventDefault();
+    // Move back 10 characters
+    currentIndex = Math.max(0, currentIndex - 10);
+    // Rebuild content from start to new index
+    editor.textContent = '';
+    const contentToInsert = fileContent.substring(0, currentIndex);
+    if (contentToInsert) {
+      document.execCommand('insertText', false, contentToInsert);
+    }
+    // Update progress
+    updatePlaybackProgress();
+  } else if (e.code === 'ArrowRight' && (playState === 'playing' || playState === 'paused')) {
+    e.preventDefault();
+    // Move forward 10 characters
+    const newIndex = Math.min(fileContent.length, currentIndex + 10);
+    // Insert skipped content
+    const skippedContent = fileContent.substring(currentIndex, newIndex);
+    if (skippedContent) {
+      document.execCommand('insertText', false, skippedContent);
+    }
+    currentIndex = newIndex;
+    // Update progress
+    updatePlaybackProgress();
+  } else if (e.key === 'Escape') {
+    if (playState === 'playing' || playState === 'paused') {
+      // Stop playback if it's active
+      e.preventDefault();
+      stopPlayback();
+    } else {
+      // Toggle focus mode if no playback is active
+      document.body.classList.toggle('focus-mode');
+    }
   }
 });
 editor.addEventListener('focus', onUserFocus);
