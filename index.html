@@ -14,6 +14,9 @@
   --toolbar-bg: rgba(10, 14, 39, 0.85);
   --statusbar-bg: rgba(10, 14, 39, 0.7);
   --editor-bg: transparent;
+  --btn-bg: rgba(255,255,255,0.1);
+  --btn-border: rgba(255,255,255,0.2);
+  --btn-hover: rgba(255,255,255,0.2);
 }
 [data-theme="sunset"] {
   --bg: linear-gradient(135deg, #2d1b4e 0%, #4a2040 50%, #7a3b2e 100%);
@@ -26,8 +29,11 @@
   --bg: linear-gradient(135deg, #faf6f0 0%, #f5ede0 100%);
   --text: #2c2c2c;
   --accent: #7a9e7e;
-  --toolbar-bg: rgba(250, 246, 240, 0.9);
-  --statusbar-bg: rgba(250, 246, 240, 0.8);
+  --toolbar-bg: rgba(230, 220, 205, 0.9);
+  --statusbar-bg: rgba(230, 220, 205, 0.8);
+  --btn-bg: rgba(0,0,0,0.08);
+  --btn-border: rgba(0,0,0,0.15);
+  --btn-hover: rgba(0,0,0,0.15);
 }
 [data-theme="ocean"] {
   --bg: linear-gradient(135deg, #0c2340 0%, #0d4f6b 50%, #1a7a7a 100%);
@@ -72,8 +78,8 @@ body {
 .toolbar-group { display: flex; align-items: center; gap: 8px; }
 
 #toolbar button {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
   color: var(--text);
   padding: 6px 12px;
   border-radius: 6px;
@@ -81,7 +87,7 @@ body {
   font-size: 13px;
   transition: background 0.2s;
 }
-#toolbar button:hover { background: rgba(255,255,255,0.2); }
+#toolbar button:hover { background: var(--btn-hover); }
 #toolbar button:disabled { opacity: 0.4; cursor: default; }
 
 .vol-label {
@@ -138,7 +144,7 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
   font-family: "Courier New", "Noto Serif SC", monospace;
   font-weight: bold;
   letter-spacing: 0.5px;
-  caret-color: transparent;
+  caret-color: var(--text);
 }
 
 [data-typestyle="modern"] #editor {
@@ -154,33 +160,9 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-@keyframes fade-char {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.retro-cursor {
-  display: inline-block;
-  width: 0.6em;
-  height: 1.1em;
-  background: var(--text);
-  vertical-align: text-bottom;
-  animation: blink-block 1s step-end infinite;
-}
-@keyframes blink-block {
-  50% { opacity: 0; }
-}
-
-/* Modern cursor: breathing gradient blink */
+/* Modern cursor: accent-colored caret */
 [data-typestyle="modern"] #editor {
   caret-color: var(--accent);
-}
-@keyframes breathing-caret {
-  0%, 100% { caret-color: var(--accent); }
-  50% { caret-color: transparent; }
-}
-[data-typestyle="modern"] #editor:focus {
-  animation: breathing-caret 1.5s ease-in-out infinite;
 }
 
 .type-effect {
@@ -673,6 +655,7 @@ function showTypeEffect() {
 
   document.body.appendChild(el);
   el.addEventListener('animationend', () => el.remove());
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
 }
 
 // === Final Integration ===
