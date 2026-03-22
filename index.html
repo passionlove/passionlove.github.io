@@ -183,6 +183,36 @@ body.focus-mode #editor-wrap { padding: 40px 20px; }
   animation: breathing-caret 1.5s ease-in-out infinite;
 }
 
+.type-effect {
+  position: fixed;
+  pointer-events: none;
+  z-index: 50;
+}
+.type-effect-retro {
+  width: 14px;
+  height: 22px;
+  background: var(--text);
+  opacity: 0.6;
+  animation: stamp-flash 0.12s ease-out forwards;
+}
+@keyframes stamp-flash {
+  0% { opacity: 0.6; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.type-effect-modern {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.5;
+  animation: soft-glow 0.3s ease-out forwards;
+}
+@keyframes soft-glow {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+
 @media (max-width: 768px) {
   #editor-wrap { padding: 60px 16px 80px; }
   #editor { max-width: 100%; font-size: 16px; }
@@ -242,7 +272,7 @@ const THEME_MUSIC_MAP = { night: 'rain', sunset: 'fire', dawn: 'forest', ocean: 
 
 let currentThemeIndex = 0;
 
-function setTheme(index) {
+function setTheme(index, fromUserClick) {
   currentThemeIndex = index;
   const theme = THEMES[index];
   if (theme.attr) {
@@ -251,10 +281,17 @@ function setTheme(index) {
     document.documentElement.removeAttribute('data-theme');
   }
   document.getElementById('theme-btn').textContent = '🎨 ' + theme.label;
+  if (fromUserClick) {
+    const pairedMusic = THEME_MUSIC_MAP[theme.id];
+    const pairedIndex = SCENES.findIndex(s => s.id === pairedMusic);
+    if (pairedIndex !== -1 && pairedIndex !== currentMusicScene) {
+      setMusicScene(pairedIndex);
+    }
+  }
 }
 
 document.getElementById('theme-btn').addEventListener('click', () => {
-  setTheme((currentThemeIndex + 1) % THEMES.length);
+  setTheme((currentThemeIndex + 1) % THEMES.length, true);
   savePrefs();
 });
 
@@ -317,7 +354,11 @@ editor.addEventListener('paste', (e) => {
 
 function onInput(e) {
   updateWordCount();
+  updateTitle();
   scheduleSave();
+  if (e.inputType === 'insertText' || e.inputType === 'insertParagraph') {
+    requestAnimationFrame(showTypeEffect);
+  }
 }
 editor.addEventListener('input', (e) => onInput(e));
 
@@ -561,7 +602,95 @@ document.getElementById('music-btn').addEventListener('click', () => {
   savePrefs();
 });
 
+// === New Document ===
+document.getElementById('new-btn').addEventListener('click', () => {
+  const text = (editor.innerText || '').trim();
+  if (text && !confirm('当前文档未导出，确定要新建吗？')) return;
+  editor.textContent = '';
+  updateWordCount();
+  saveToStorage();
+  editor.focus();
+});
+
+// === Markdown Export ===
+document.getElementById('export-btn').addEventListener('click', () => {
+  const text = editor.innerText || '';
+  if (!text.trim()) return;
+
+  const firstLine = text.split('\n')[0].trim();
+  let filename;
+  if (firstLine) {
+    filename = firstLine
+      .replace(/[\/\\:*?"<>|]/g, '')
+      .substring(0, 50)
+      .trim();
+    filename = filename || '写作';
+  } else {
+    const d = new Date();
+    filename = `写作-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  filename += '.md';
+
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// === Typing Animation ===
+function getCaretCoordinates() {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(false);
+  const rect = range.getClientRects()[0];
+  if (!rect) {
+    const editorRect = editor.getBoundingClientRect();
+    return { x: editorRect.left, y: editorRect.top };
+  }
+  return { x: rect.left, y: rect.top };
+}
+
+function showTypeEffect() {
+  if (currentStyleIndex === 2) return;
+  const pos = getCaretCoordinates();
+  if (!pos) return;
+
+  const el = document.createElement('div');
+  el.className = 'type-effect';
+  el.style.left = pos.x + 'px';
+  el.style.top = pos.y + 'px';
+
+  if (currentStyleIndex === 0) {
+    el.classList.add('type-effect-retro');
+    el.style.transform = `translate(${(Math.random()-0.5)*3}px, ${(Math.random()-0.5)*2}px)`;
+  } else {
+    el.classList.add('type-effect-modern');
+  }
+
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+// === Final Integration ===
+function updateTitle() {
+  const text = (editor.innerText || '').split('\n')[0].trim();
+  document.title = text ? text.substring(0, 30) + ' — 写作' : '写作';
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+});
+
+// === Initialization ===
 restoreFromStorage();
+updateWordCount();
+editor.focus();
   </script>
 </body>
 </html>
