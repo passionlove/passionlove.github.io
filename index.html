@@ -917,13 +917,29 @@ playbackSpeedSlider.addEventListener('input', (e) => {
   playSpeed = parseFloat(e.target.value);
 });
 
-function stopPlayback() {
+function stopPlayback(finished = false) {
+  // Cancel RAF
   if (playbackRAF) {
     cancelAnimationFrame(playbackRAF);
     playbackRAF = null;
   }
+
+  // Set play state
   playState = 'stopped';
+
+  // Hide playback controls
+  playbackBar.style.display = 'none';
+
+  // Unlock editor
   editorLock.classList.remove('active');
+
+  // Update word count
+  updateWordCount();
+
+  // Show completion indicator if finished
+  if (finished) {
+    showSaveIndicator('✓ 播放完成');
+  }
 }
 
 function startPlayback(text) {
