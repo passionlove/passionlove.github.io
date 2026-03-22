@@ -920,6 +920,12 @@ playbackSpeedSlider.addEventListener('input', (e) => {
 document.getElementById('playback-pause').addEventListener('click', togglePause);
 document.getElementById('playback-play').addEventListener('click', togglePause);
 
+function updatePlaybackProgress() {
+  const total = fileContent.length;
+  const current = currentIndex;
+  wordCountEl.textContent = `播放中 ${current} / ${total} 字`;
+}
+
 function stopPlayback(finished = false) {
   // Cancel RAF
   if (playbackRAF) {
@@ -936,7 +942,7 @@ function stopPlayback(finished = false) {
   // Unlock editor
   editorLock.classList.remove('active');
 
-  // Update word count
+  // Update word count (restore normal display)
   updateWordCount();
 
   // Show completion indicator if finished
@@ -997,8 +1003,8 @@ function playbackLoop() {
     document.execCommand('insertText', false, char);
     currentIndex++;
 
-    // Update word count
-    updateWordCount();
+    // Update playback progress
+    updatePlaybackProgress();
 
     // Show typing effect and sound
     showTypeEffect();
