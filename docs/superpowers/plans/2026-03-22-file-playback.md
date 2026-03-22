@@ -524,6 +524,7 @@ git commit -m "feat: add playback progress display"
 
 ```javascript
 document.getElementById('pb-start').addEventListener('click', () => {
+  if (playState !== 'playing' && playState !== 'paused') return; // Only works when playback active
   currentIndex = 0;
   editor.textContent = '';
   if (playState === 'paused') {
@@ -536,10 +537,10 @@ document.getElementById('pb-start').addEventListener('click', () => {
 });
 
 document.getElementById('pb-end').addEventListener('click', () => {
-  currentIndex = fileContent.length;
-  // Insert remaining content instantly
+  // Insert remaining content instantly before updating index
   const remaining = fileContent.slice(currentIndex);
   document.execCommand('insertText', false, remaining);
+  currentIndex = fileContent.length;
   stopPlayback(true);
 });
 
@@ -635,7 +636,7 @@ document.addEventListener('keydown', (e) => {
 });
 ```
 
-**Note:** Remove or update existing Escape keydown listener that conflicts
+**Note:** Existing Escape key handler at line 412 toggles focus-mode. The new handler above will replace/extend this - integrate the focus-mode toggle into the idle-state check at the top of the new handler, or remove the old listener and add focus-mode toggle to the new handler's idle-state path.
 
 - [ ] **Step 2: Test**
 
@@ -690,10 +691,13 @@ git commit -m "feat: handle playback interruption on new document"
 
 - [ ] **Step 1: Update setTheme to not break playback**
 
-Verify existing `setTheme` function doesn't interfere with playback state.
-If it resets editor styles, ensure playback continues correctly.
-
-No code change needed if setTheme only updates CSS variables.
+Check the existing `setTheme` function (around line 319):
+1. If it only modifies CSS variables/DOM attributes → no change needed
+2. If it modifies editor content (innerHTML/textContent) → add check to skip during playback:
+```javascript
+if (playState === 'playing' || playState === 'paused') return;
+```
+3. If it removes/re-adds event listeners → ensure playback state is preserved
 
 - [ ] **Step 2: Test**
 
