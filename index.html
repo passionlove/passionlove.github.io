@@ -469,6 +469,14 @@ let currentMusicScene = 3; // silence default
 function savePrefs() {}
 function scheduleSave() {}
 
+// === Playback State Variables ===
+let playState = 'idle'; // 'idle' | 'playing' | 'paused' | 'stopped'
+let playSpeed = 1;
+let currentIndex = 0;
+let fileContent = '';
+let playbackRAF = null;
+let lastPlaybackTime = 0;
+
 // === Theme System ===
 const THEMES = [
   { id: 'night', label: '深夜', attr: '' },
