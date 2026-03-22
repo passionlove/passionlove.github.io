@@ -917,6 +917,9 @@ playbackSpeedSlider.addEventListener('input', (e) => {
   playSpeed = parseFloat(e.target.value);
 });
 
+document.getElementById('playback-pause').addEventListener('click', togglePause);
+document.getElementById('playback-play').addEventListener('click', togglePause);
+
 function stopPlayback(finished = false) {
   // Cancel RAF
   if (playbackRAF) {
@@ -961,6 +964,10 @@ function startPlayback(text) {
   // Show playback controls
   playbackBar.style.display = 'flex';
 
+  // Show pause button, hide play button
+  document.getElementById('playback-play').style.display = 'none';
+  document.getElementById('playback-pause').style.display = 'inline-block';
+
   // Start playback loop
   lastPlaybackTime = performance.now();
   playbackLoop();
@@ -1001,6 +1008,29 @@ function playbackLoop() {
   }
 
   playbackRAF = requestAnimationFrame(playbackLoop);
+}
+
+function togglePause() {
+  if (playState === 'playing') {
+    // Playing → Paused
+    playState = 'paused';
+    // Unlock editor
+    editorLock.classList.remove('active');
+    // Show play button, hide pause button
+    document.getElementById('playback-play').style.display = 'inline-block';
+    document.getElementById('playback-pause').style.display = 'none';
+  } else if (playState === 'paused') {
+    // Paused → Playing
+    playState = 'playing';
+    // Lock editor
+    editorLock.classList.add('active');
+    // Show pause button, hide play button
+    document.getElementById('playback-play').style.display = 'none';
+    document.getElementById('playback-pause').style.display = 'inline-block';
+    // Resume with playback loop
+    lastPlaybackTime = performance.now();
+    playbackLoop();
+  }
 }
 
 // === File Upload Handler ===
