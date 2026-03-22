@@ -13,7 +13,7 @@ Atmosphere-focused writing experience. Visual and auditory ambiance is the prior
 ## Page Layout
 
 - Full viewport (100vh/100vw), no scrollbar distractions
-- **Top toolbar**: semi-transparent, hidden by default, appears on mouse hover or keyboard shortcut. Contains: theme switcher, music controls, typewriter style selector, export button, new document button
+- **Top toolbar**: semi-transparent, hidden by default, appears on mouse hover at top edge. Contains: theme switcher, music controls, typewriter style selector, export button, new document button
 - **Center writing area**: max-width 700px, vertically centered, simulates a paper/typing surface
 - **Bottom status bar**: semi-transparent fade-in, shows word count and "saved" indicator
 - **Esc key**: toggles full focus mode (hides all UI, text only)
@@ -41,11 +41,11 @@ Three switchable styles:
 - Standard cursor
 - No typing sound effects
 
-All styles: keystroke pitch varies randomly (±5%) to avoid repetitive feel. Enter and Backspace have distinct sound variants.
+Styles with sound enabled (Retro Mechanical, Modern Soft): keystroke pitch varies randomly (±5%) to avoid repetitive feel. Enter and Backspace have distinct sound variants. Minimal has no typing sound.
 
 ## Background Ambient Music
 
-4 ambient scenes, using embedded Base64 audio loops for realism:
+4 ambient scenes. Each uses a short looping audio clip (~5-8 seconds, mono, 64kbps MP3) embedded as Base64 data URI. Estimated ~30-50KB per clip, total audio budget ~200KB in the HTML file:
 
 | Scene | Description |
 |-------|-------------|
@@ -56,10 +56,11 @@ All styles: keystroke pitch varies randomly (±5%) to avoid repetitive feel. Ent
 
 ## Audio Architecture
 
-- Single global `AudioContext`, created on first user interaction (browser autoplay policy)
+- Single global `AudioContext`, created on first user interaction (browser autoplay policy). If creation fails, audio features are silently disabled; the app remains fully functional for writing.
 - **Typing sounds**: Web Audio API real-time synthesis. Short-lived OscillatorNode/BufferSource per keystroke, auto-released after playback
-- **Background ambiance**: Base64-encoded short audio clips decoded to AudioBuffer, played with `loop: true`
+- **Background ambiance**: Base64-encoded short audio clips (~5-8s each) decoded to AudioBuffer, played with `loop: true`
 - Two independent GainNodes for separate volume control (typing vs background)
+- On tab background: AudioContext suspends automatically (browser behavior). Resumes on tab focus. Auto-save continues regardless.
 
 ## Theme System
 
@@ -83,14 +84,18 @@ Themes implemented via CSS custom properties (CSS Variables) for instant switchi
 ## Markdown Export
 
 - Toolbar export button generates `.md` file and triggers browser download
-- Filename: first line of text as title (e.g., `My Article.md`), or `写作-YYYY-MM-DD.md` if first line is empty
+- Filename: first line of text as title, sanitized (remove `/\:*?"<>|`, truncate to 50 chars), e.g., `My Article.md`
+- Fallback filename: `写作-YYYY-MM-DD.md` if first line is empty
+- Empty document: export button disabled when no content
 
 ## Data Persistence (localStorage)
 
 - Auto-save with 1-second debounce after each keystroke
-- Stores: text content, cursor position, current theme, music selection, typewriter style, volume settings
+- Stores: text content (as plain text, not DOM), current theme, music selection, typewriter style, volume settings
+- Cursor position: restored to end of document on reload (simple and reliable)
 - Full state restoration on page reload
 - Toolbar shows brief "saved" indicator after each save
+- Storage limit: if localStorage write fails, show a non-blocking warning. Text content is the priority; drop preferences if space is tight.
 
 ## New Document
 
@@ -101,8 +106,11 @@ Themes implemented via CSS custom properties (CSS Variables) for instant switchi
 ## Editor Implementation
 
 - `contenteditable` `<div>` (not `<textarea>`) for flexible cursor and character styling
-- Typewriter animations via CSS animation classes, added per character, removed after animation completes
+- Typewriter animation approach: use `input` event listener. On each input, apply a brief CSS animation to the newly inserted text node. Do NOT wrap each character in individual `<span>` elements — this avoids DOM bloat and cursor navigation issues. Instead, use a transient overlay or pseudo-element technique for the animation effect.
+- Paste behavior: strip to plain text (`text/plain`), insert without per-character animation (instant insert)
+- Undo/redo: rely on browser native `contenteditable` undo stack
 - `requestAnimationFrame` for animations, non-blocking input
+- `prefers-reduced-motion`: auto-select Minimal style when user has reduced motion enabled
 
 ## Responsive Design
 
