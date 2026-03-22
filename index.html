@@ -908,9 +908,83 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// === Stub for startPlayback (will be implemented in Task 7) ===
+// === Playback Control ===
+const playbackBar = document.getElementById('playback-bar');
+const editorLock = document.getElementById('editor-lock');
+const playbackSpeedSlider = document.getElementById('playback-speed');
+
+playbackSpeedSlider.addEventListener('input', (e) => {
+  playSpeed = parseFloat(e.target.value);
+});
+
+function stopPlayback() {
+  if (playbackRAF) {
+    cancelAnimationFrame(playbackRAF);
+    playbackRAF = null;
+  }
+  playState = 'stopped';
+  editorLock.classList.remove('active');
+}
+
 function startPlayback(text) {
-  console.warn('startPlayback not yet implemented');
+  // Stop any existing playback
+  stopPlayback();
+
+  // Set playback state
+  fileContent = text;
+  currentIndex = 0;
+  playState = 'playing';
+
+  // Hide welcome message
+  hideWelcome();
+
+  // Clear editor and lock it
+  editor.textContent = '';
+  editorLock.classList.add('active');
+
+  // Show playback controls
+  playbackBar.style.display = 'flex';
+
+  // Start playback loop
+  lastPlaybackTime = performance.now();
+  playbackLoop();
+}
+
+function playbackLoop() {
+  if (playState !== 'playing') {
+    playbackRAF = null;
+    return;
+  }
+
+  const now = performance.now();
+  const elapsed = now - lastPlaybackTime;
+  const interval = 80 / playSpeed; // 80ms per character, adjusted by speed
+
+  if (elapsed >= interval) {
+    // Check if we've reached the end
+    if (currentIndex >= fileContent.length) {
+      playState = 'stopped';
+      editorLock.classList.remove('active');
+      playbackRAF = null;
+      return;
+    }
+
+    // Insert the next character
+    const char = fileContent[currentIndex];
+    document.execCommand('insertText', false, char);
+    currentIndex++;
+
+    // Update word count
+    updateWordCount();
+
+    // Show typing effect and sound
+    showTypeEffect();
+    playRetroKeystroke(char);
+
+    lastPlaybackTime = now;
+  }
+
+  playbackRAF = requestAnimationFrame(playbackLoop);
 }
 
 // === File Upload Handler ===
