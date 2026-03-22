@@ -467,7 +467,6 @@ function restoreFromStorage() {
     if (data.typeVolume !== undefined) document.getElementById('type-volume').value = data.typeVolume;
     if (data.musicScene !== undefined) {
       currentMusicScene = data.musicScene;
-      document.getElementById('music-btn').textContent = SCENES[currentMusicScene].label;
     }
     const range = document.createRange();
     const sel = window.getSelection();
@@ -736,6 +735,7 @@ document.addEventListener('visibilitychange', () => {
 // === Initialization ===
 restoreFromStorage();
 updateWordCount();
+document.getElementById('music-btn').textContent = SCENES[currentMusicScene].label;
 editor.focus();
   </script>
 </body>
