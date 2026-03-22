@@ -857,6 +857,12 @@ document.getElementById('music-btn').addEventListener('click', () => {
 
 // === New Document ===
 document.getElementById('new-btn').addEventListener('click', () => {
+  // Check if playback is active and confirm before stopping
+  if (playState === 'playing' || playState === 'paused') {
+    if (!confirm('播放中，确定要新建文档吗？')) return;
+    stopPlayback(false);
+  }
+
   const text = (editor.innerText || '').trim();
   if (text && !confirm('当前文档未导出，确定要新建吗？')) return;
   editor.textContent = '';
